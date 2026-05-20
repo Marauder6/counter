@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>Counter</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #111;
+      color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #value {
+      font-size: 4rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+    #reset {
+      background: #2a2a2a;
+      color: #f5f5f5;
+      border: 1px solid #444;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+    }
+    #reset:active {
+      background: #3a3a3a;
+    }
+    #config {
+      font-size: 0.9rem;
+      color: #888;
+    }
+    #config input {
+      background: #1a1a1a;
+      color: #f5f5f5;
+      border: 1px solid #333;
+      border-radius: 0.3rem;
+      padding: 0.3rem 0.5rem;
+      width: 5rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="value">0</div>
+  <button id="reset">Reset</button>
+  <div id="config">
+    Per second: <input id="rate" type="number" step="any" value="1">
+  </div>
+
+  <script>
+    // --- State, loaded from localStorage if available ---
+    let startTime = parseFloat(localStorage.getItem("startTime")) || Date.now();
+    let startValue = parseFloat(localStorage.getItem("startValue")) || 0;
+    let rate = parseFloat(localStorage.getItem("rate")) || 1;
+
+    // Persist initial state so first-load values are saved
+    saveState();
+
+    const valueEl = document.getElementById("value");
+    const resetBtn = document.getElementById("reset");
+    const rateInput = document.getElementById("rate");
+    rateInput.value = rate;
+
+    function saveState() {
+      localStorage.setItem("startTime", startTime);
+      localStorage.setItem("startValue", startValue);
+      localStorage.setItem("rate", rate);
+    }
+
+    function currentValue() {
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      return startValue + rate * elapsedSeconds;
+    }
+
+    function render() {
+      // Four decimal places so the motion is visible even with rate = 1
+      valueEl.textContent = currentValue().toFixed(4);
+      requestAnimationFrame(render);
+    }
+
+    resetBtn.addEventListener("click", () => {
+      startTime = Date.now();
+      startValue = 0;
+      saveState();
+    });
+
+    rateInput.addEventListener("change", () => {
+      // Lock in the value-so-far before changing rate, so the number doesn't jump
+      startValue = currentValue();
+      startTime = Date.now();
+      rate = parseFloat(rateInput.value) || 0;
+      saveState();
+    });
+
+    render();
+  </script>
+</body>
+</html>
