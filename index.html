@@ -166,7 +166,7 @@
       while (day !== today) {
         const next = nextDayStr(day);
         const midnight = localMidnightMs(next);
-        log.push({ date: day, value: valueAt(midnight) / 100 });
+        log.push({ date: day, value: valueAt(midnight) });
         startValue  = 0;
         startTime   = midnight;
         pausedValue = 0;
@@ -191,7 +191,7 @@
     }
 
     function adjustLogHours(idx, hours) {
-      log[idx].value = Math.max(0, log[idx].value + rate * 3600 * hours / 100);
+      log[idx].value = Math.max(0, log[idx].value + rate * 3600 * hours);
       saveState();
       renderLog();
       const row = document.getElementById(`edit-row-${idx}`);
@@ -204,7 +204,7 @@
       if (!startStr || !endStr) return;
       let seconds = timeStrToSeconds(endStr) - timeStrToSeconds(startStr);
       if (seconds < 0) seconds += 86400;
-      log[idx].value = seconds * rate / 100;
+      log[idx].value = seconds * rate;
       saveState();
       renderLog();
       const row = document.getElementById(`edit-row-${idx}`);
@@ -245,7 +245,7 @@
 
     function render() {
       checkDayRollover();
-      valueEl.textContent = (currentValue() / 100).toFixed(2);
+      valueEl.textContent = currentValue().toFixed(4);
       requestAnimationFrame(render);
     }
 
