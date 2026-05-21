@@ -130,7 +130,6 @@
   </div>
 
   <script>
-    // --- Date helpers (local time) ---
     function todayStr() {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -147,7 +146,6 @@
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    // --- State, loaded from localStorage if available ---
     let startTime   = parseFloat(localStorage.getItem("startTime"))   || Date.now();
     let startValue  = parseFloat(localStorage.getItem("startValue"))  || 0;
     let rate        = parseFloat(localStorage.getItem("rate"))        || (25 / 3600);
@@ -156,7 +154,6 @@
     let currentDay  = localStorage.getItem("currentDay")              || todayStr();
     let log         = JSON.parse(localStorage.getItem("log")          || "[]");
 
-    // Ensure all log values are stored as numbers
     log = log.map(e => ({ date: e.date, value: parseFloat(e.value) }));
 
     function saveState() {
@@ -200,7 +197,6 @@
       updateToggleLabel();
     }
 
-    // --- Log editing ---
     function timeStrToSeconds(str) {
       const parts = str.split(':').map(Number);
       return parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
@@ -232,7 +228,6 @@
       if (row) row.style.display = '';
     }
 
-    // --- DOM refs ---
     const valueEl   = document.getElementById("value");
     const resetBtn  = document.getElementById("reset");
     const toggleBtn = document.getElementById("toggle");
@@ -240,7 +235,6 @@
     const logTable  = document.getElementById("log-table");
 
     rateInput.value = rate;
-    updateToggleLabel();
 
     function updateToggleLabel() {
       toggleBtn.textContent = running ? "Stop" : "Start";
@@ -274,6 +268,8 @@
       valueEl.textContent = (currentValue() / 100).toFixed(2);
       requestAnimationFrame(render);
     }
+
+    updateToggleLabel();
 
     toggleBtn.addEventListener("click", () => {
       if (running) {
