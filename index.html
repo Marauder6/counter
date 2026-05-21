@@ -45,19 +45,6 @@
     #reset:active, #toggle:active {
       background: #3a3a3a;
     }
-    #config {
-      font-size: 0.9rem;
-      color: #888;
-    }
-    #config input {
-      background: #1a1a1a;
-      color: #f5f5f5;
-      border: 1px solid #333;
-      border-radius: 0.3rem;
-      padding: 0.3rem 0.5rem;
-      width: 5rem;
-      font-size: 0.9rem;
-    }
     #log-section {
       font-size: 0.85rem;
       color: #666;
@@ -122,9 +109,6 @@
     <button id="toggle">Stop</button>
     <button id="reset">Reset</button>
   </div>
-  <div id="config">
-    Per second: <input id="rate" type="number" step="any" value="0.00694444">
-  </div>
   <div id="log-section">
     <table id="log-table"></table>
   </div>
@@ -148,7 +132,7 @@
 
     let startTime   = parseFloat(localStorage.getItem("startTime"))   || Date.now();
     let startValue  = parseFloat(localStorage.getItem("startValue"))  || 0;
-    let rate        = parseFloat(localStorage.getItem("rate"))        || (25 / 3600);
+    const rate      = 25 / 3600;
     let running     = localStorage.getItem("running") !== "false";
     let pausedValue = parseFloat(localStorage.getItem("pausedValue")) || 0;
     let currentDay  = localStorage.getItem("currentDay")              || todayStr();
@@ -159,7 +143,6 @@
     function saveState() {
       localStorage.setItem("startTime",   startTime);
       localStorage.setItem("startValue",  startValue);
-      localStorage.setItem("rate",        rate);
       localStorage.setItem("running",     running);
       localStorage.setItem("pausedValue", pausedValue);
       localStorage.setItem("currentDay",  currentDay);
@@ -231,10 +214,7 @@
     const valueEl   = document.getElementById("value");
     const resetBtn  = document.getElementById("reset");
     const toggleBtn = document.getElementById("toggle");
-    const rateInput = document.getElementById("rate");
     const logTable  = document.getElementById("log-table");
-
-    rateInput.value = rate;
 
     function updateToggleLabel() {
       toggleBtn.textContent = running ? "Stop" : "Start";
@@ -265,7 +245,7 @@
 
     function render() {
       checkDayRollover();
-      valueEl.textContent = (currentValue() / 100).toFixed(2);
+      valueEl.textContent = (currentValue() / 100).toFixed(4);
       requestAnimationFrame(render);
     }
 
@@ -288,15 +268,6 @@
       startTime   = Date.now();
       startValue  = 0;
       pausedValue = 0;
-      saveState();
-    });
-
-    rateInput.addEventListener("change", () => {
-      const frozen = currentValue();
-      startValue  = frozen;
-      pausedValue = frozen;
-      startTime   = Date.now();
-      rate = parseFloat(rateInput.value) || 0;
       saveState();
     });
 
