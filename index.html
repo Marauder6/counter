@@ -245,7 +245,7 @@
 
     function render() {
       checkDayRollover();
-      valueEl.textContent = (currentValue() / 100).toFixed(4);
+      valueEl.textContent = (currentValue() / 100).toFixed(2);
       requestAnimationFrame(render);
     }
 
