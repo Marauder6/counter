@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>Counter</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #111;
+      color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #value {
+      font-size: 4rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+    #controls {
+      display: flex;
+      gap: 0.75rem;
+    }
+    #reset, #toggle {
+      background: #2a2a2a;
+      color: #f5f5f5;
+      border: 1px solid #444;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+    }
+    #reset:active, #toggle:active {
+      background: #3a3a3a;
+    }
+    #config {
+      font-size: 0.9rem;
+      color: #888;
+    }
+    #config input {
+      background: #1a1a1a;
+      color: #f5f5f5;
+      border: 1px solid #333;
+      border-radius: 0.3rem;
+      padding: 0.3rem 0.5rem;
+      width: 5rem;
+      font-size: 0.9rem;
+    }
+    #log-section {
+      font-size: 0.85rem;
+      color: #666;
+      max-height: 20rem;
+      overflow-y: auto;
+    }
+    #log-section table {
+      border-collapse: collapse;
+    }
+    .log-main td {
+      padding: 0.2rem 0.6rem;
+      vertical-align: middle;
+    }
+    .log-date { color: #666; }
+    .log-val  { text-align: right; font-variant-numeric: tabular-nums; color: #999; }
+    .log-edit-btn {
+      background: none;
+      border: 1px solid #333;
+      color: #555;
+      border-radius: 0.3rem;
+      padding: 0.1rem 0.45rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .log-edit-btn:hover { border-color: #555; color: #888; }
+    .edit-row td {
+      padding: 0.35rem 0.6rem 0.5rem;
+    }
+    .edit-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .edit-panel button {
+      background: #1e1e1e;
+      border: 1px solid #383838;
+      color: #aaa;
+      border-radius: 0.3rem;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .edit-panel button:hover { border-color: #555; color: #ddd; }
+    .edit-sep { color: #333; margin: 0 0.1rem; }
+    .edit-panel input[type="time"] {
+      background: #1a1a1a;
+      color: #ccc;
+      border: 1px solid #333;
+      border-radius: 0.3rem;
+      padding: 0.15rem 0.4rem;
+      font-size: 0.8rem;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .edit-panel label { color: #555; font-size: 0.78rem; }
+  </style>
+</head>
+<body>
+  <div id="value">0.00</div>
+  <div id="controls">
+    <button id="toggle">Stop</button>
+    <button id="reset">Reset</button>
+  </div>
+  <div id="config">
+    Per second: <input id="rate" type="number" step="any" value="0.00694444">
+  </div>
+  <div id="log-section">
+    <table id="log-table"></table>
+  </div>
+
+  <script>
+    // --- Date helpers (local time) ---
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function localMidnightMs(dateStr) {
+      const [y, m, day] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, day).getTime();
+    }
+
+    function nextDayStr(dateStr) {
+      const [y, m, day] = dateStr.split('-').map(Number);
+      const d = new Date(y, m - 1, day + 1);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    // --- State, loaded from localStorage if available ---
+    let startTime   = parseFloat(localStorage.getItem("startTime"))   || Date.now();
+    let startValue  = parseFloat(localStorage.getItem("startValue"))  || 0;
+    let rate        = parseFloat(localStorage.getItem("rate"))        || (25 / 3600);
+    let running     = localStorage.getItem("running") !== "false";
+    let pausedValue = parseFloat(localStorage.getItem("pausedValue")) || 0;
+    let currentDay  = localStorage.getItem("currentDay")              || todayStr();
+    let log         = JSON.parse(localStorage.getItem("log")          || "[]");
+
+    // Ensure all log values are stored as numbers
+    log = log.map(e => ({ date: e.date, value: parseFloat(e.value) }));
+
+    function saveState() {
+      localStorage.setItem("startTime",   startTime);
+      localStorage.setItem("startValue",  startValue);
+      localStorage.setItem("rate",        rate);
+      localStorage.setItem("running",     running);
+      localStorage.setItem("pausedValue", pausedValue);
+      localStorage.setItem("currentDay",  currentDay);
+      localStorage.setItem("log",         JSON.stringify(log));
+    }
+
+    function valueAt(ms) {
+      if (!running) return pausedValue;
+      return startValue + rate * (ms - startTime) / 1000;
+    }
+
+    function currentValue() {
+      return valueAt(Date.now());
+    }
+
+    function checkDayRollover() {
+      const today = todayStr();
+      if (today === currentDay) return;
+
+      let day = currentDay;
+      while (day !== today) {
+        const next = nextDayStr(day);
+        const midnight = localMidnightMs(next);
+        log.push({ date: day, value: valueAt(midnight) / 100 });
+        startValue  = 0;
+        startTime   = midnight;
+        pausedValue = 0;
+        day = next;
+      }
+
+      currentDay = today;
+      running    = true;
+      saveState();
+      renderLog();
+      updateToggleLabel();
+    }
+
+    // --- Log editing ---
+    function timeStrToSeconds(str) {
+      const parts = str.split(':').map(Number);
+      return parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+    }
+
+    function toggleEdit(idx) {
+      const row = document.getElementById(`edit-row-${idx}`);
+      row.style.display = row.style.display === 'none' ? '' : 'none';
+    }
+
+    function adjustLogHours(idx, hours) {
+      log[idx].value = Math.max(0, log[idx].value + rate * 3600 * hours / 100);
+      saveState();
+      renderLog();
+      const row = document.getElementById(`edit-row-${idx}`);
+      if (row) row.style.display = '';
+    }
+
+    function setFromRange(idx) {
+      const startStr = document.getElementById(`tstart-${idx}`).value;
+      const endStr   = document.getElementById(`tend-${idx}`).value;
+      if (!startStr || !endStr) return;
+      let seconds = timeStrToSeconds(endStr) - timeStrToSeconds(startStr);
+      if (seconds < 0) seconds += 86400;
+      log[idx].value = seconds * rate / 100;
+      saveState();
+      renderLog();
+      const row = document.getElementById(`edit-row-${idx}`);
+      if (row) row.style.display = '';
+    }
+
+    // --- DOM refs ---
+    const valueEl   = document.getElementById("value");
+    const resetBtn  = document.getElementById("reset");
+    const toggleBtn = document.getElementById("toggle");
+    const rateInput = document.getElementById("rate");
+    const logTable  = document.getElementById("log-table");
+
+    rateInput.value = rate;
+    updateToggleLabel();
+
+    function updateToggleLabel() {
+      toggleBtn.textContent = running ? "Stop" : "Start";
+    }
+
+    function renderLog() {
+      const entries = log.map((e, i) => ({ ...e, idx: i })).reverse();
+      logTable.innerHTML = entries.map(({ date, value, idx }) => `
+        <tr class="log-main">
+          <td class="log-date">${date}</td>
+          <td class="log-val">${value.toFixed(2)}</td>
+          <td><button class="log-edit-btn" onclick="toggleEdit(${idx})">edit</button></td>
+        </tr>
+        <tr id="edit-row-${idx}" class="edit-row" style="display:none">
+          <td colspan="3">
+            <div class="edit-panel">
+              <button onclick="adjustLogHours(${idx}, -1)">−1h</button>
+              <button onclick="adjustLogHours(${idx}, +1)">+1h</button>
+              <span class="edit-sep">|</span>
+              <label>Start <input type="time" id="tstart-${idx}" step="1"></label>
+              <label>End <input type="time" id="tend-${idx}" step="1"></label>
+              <button onclick="setFromRange(${idx})">Set</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function render() {
+      checkDayRollover();
+      valueEl.textContent = (currentValue() / 100).toFixed(2);
+      requestAnimationFrame(render);
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      if (running) {
+        pausedValue = currentValue();
+        running = false;
+      } else {
+        startValue = pausedValue;
+        startTime  = Date.now();
+        running    = true;
+      }
+      updateToggleLabel();
+      saveState();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      startTime   = Date.now();
+      startValue  = 0;
+      pausedValue = 0;
+      saveState();
+    });
+
+    rateInput.addEventListener("change", () => {
+      const frozen = currentValue();
+      startValue  = frozen;
+      pausedValue = frozen;
+      startTime   = Date.now();
+      rate = parseFloat(rateInput.value) || 0;
+      saveState();
+    });
+
+    saveState();
+    renderLog();
+    render();
+  </script>
+</body>
+</html>
